@@ -1,3 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realms
+  namespace: security
+data:
+  ebank-realm.json: |
+    {
+      "realm": "ebank",
+      "enabled": true,
+      "clients": [
+        {
+          "clientId": "spa",
+          "publicClient": true,
+          "redirectUris": ["*"]
+        }
+      ],
+      "defaultRoles": ["offline_access", "impersonation"]
+    }
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,11 +35,19 @@ spec:
       containers:
         - name: keycloak
           image: quay.io/keycloak/keycloak:25.0
-          args: ["start-dev"]
+          args: ["start-dev", "--import-realm", "--features", "admin-fine-grained-authz"]
           env:
             - { name: KEYCLOAK_ADMIN, value: "admin" }
             - { name: KEYCLOAK_ADMIN_PASSWORD, value: "admin" }
+            - { name: KC_HTTP_ENABLED, value: "true" }
           ports: [ { containerPort: 8080 } ]
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+      volumes:
+        - name: realm-config
+          configMap:
+            name: keycloak-realms
 ---
 apiVersion: v1
 kind: Service
