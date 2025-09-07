@@ -48,15 +48,22 @@ builder.Services
 builder.Services.AddAuthorization();
 
 // Rate limiting
-builder.Services.AddRateLimiter(o =>
+builder.Services.AddRateLimiter(options =>
 {
-    o.AddPolicy("ip", ctx =>
-        RateLimitPartition.GetIpPartition(ctx, _ => new FixedWindowRateLimiterOptions
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("ip", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 60,
-            Window = TimeSpan.FromMinutes(1),
-            QueueLimit = 0
-        }));
+            PermitLimit = 60,                  
+            Window = TimeSpan.FromMinutes(1),  
+            QueueLimit = 0,                    
+            AutoReplenishment = true
+        });
+    });
 });
 
 // Ocelot
