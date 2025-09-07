@@ -1,0 +1,7 @@
+{
+  "GlobalConfiguration": {
+    "RequestIdKey": "X-Request-ID",
+    "DownstreamScheme": "http"
+  },
+  "Routes": []
+}

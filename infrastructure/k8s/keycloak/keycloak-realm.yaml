@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: security
+data:
+  ebanking-realm.json: |
+    {
+      "realm": "ebanking",
+      "enabled": true,
+      "registrationAllowed": false,
+      "loginWithEmailAllowed": true,
+      "resetPasswordAllowed": true,
+      "otpPolicyType": "totp",
+      "requiredActions": [
+        {
+          "alias": "CONFIGURE_TOTP",
+          "name": "Configure OTP",
+          "enabled": true,
+          "defaultAction": true
+        }
+      ],
+      "roles": {
+        "realm": [
+          {
+            "name": "read:accounts"
+          },
+          {
+            "name": "write:transfers"
+          },
+          {
+            "name": "write:payments"
+          },
+          {
+            "name": "read:notifications"
+          }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "angular-spa",
+          "protocol": "openid-connect",
+          "publicClient": true,
+          "standardFlowEnabled": true,
+          "directAccessGrantsEnabled": false,
+          "implicitFlowEnabled": false,
+          "serviceAccountsEnabled": false,
+          "attributes": {
+            "pkce.code.challenge.method": "S256"
+          },
+          "redirectUris": [
+            "https://ebank.local/app/*"
+          ],
+          "webOrigins": [
+            "https://ebank.local"
+          ],
+          "defaultClientScopes": [
+            "web-origins",
+            "roles",
+            "profile",
+            "email"
+          ]
+        },
+        {
+          "clientId": "api-gateway",
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "serviceAccountsEnabled": false,
+          "standardFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "bearerOnly": true
+        }
+      ]
+    }

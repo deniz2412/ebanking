@@ -17,23 +17,42 @@ metadata:
   name: api-gateway
   namespace: svc
 spec:
+  replicas: 1
   selector:
     matchLabels: { app: api-gateway }
-  replicas: 1
   template:
     metadata:
       labels: { app: api-gateway }
     spec:
       containers:
-        - name: gw
-          image: ealen/echo-server:latest
-          ports:
-            - containerPort: 80
+        - name: gateway
+          image: ghcr.io/deniz2412/gateway-ocelot:latest
+          imagePullPolicy: IfNotPresent
+          ports: [ { containerPort: 80 } ]
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://0.0.0.0:80"
           readinessProbe:
-            httpGet: { path: "/", port: 80 }
-            initialDelaySeconds: 3
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: "/", port: 80 }
-            initialDelaySeconds: 5
+            httpGet: { path: /healthz, port: 80 }
+            initialDelaySeconds: 10
             periodSeconds: 10
+          volumeMounts:
+            - name: cfg
+              mountPath: /app/appsettings.json
+              subPath: appsettings.json
+            - name: ocelot
+              mountPath: /app/ocelot.json
+              subPath: ocelot.json
+      volumes:
+        - name: cfg
+          configMap:
+            name: gateway-ocelot-config
+            items: [ { key: appsettings.json, path: appsettings.json } ]
+        - name: ocelot
+          configMap:
+            name: gateway-ocelot-config
+            items: [ { key: ocelot.json, path: ocelot.json } ]

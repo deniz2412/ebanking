@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak-ingress
+  namespace: security
+  annotations:
+    cert-manager.io/issuer: ebank-ca
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [ "ebank.local" ]
+      secretName: ebank-tls
+  rules:
+    - host: ebank.local
+      http:
+        paths:
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port: { number: 8080 }

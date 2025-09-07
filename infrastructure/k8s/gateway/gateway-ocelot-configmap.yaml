@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-ocelot-config
+  namespace: svc
+data:
+  appsettings.json: |
+    {
+      "Auth": { "Authority": "https://ebank.local/auth/realms/ebanking", "Audience": "" },
+      "Cors": { "SpaOrigin": "https://ebank.local" },
+      "Serilog": { "MinimumLevel": { "Default": "Information", "Override": { "Microsoft": "Warning", "System": "Warning", "Ocelot": "Information" } } }
+    }
+    
+  ocelot.json: |
+    {
+      "GlobalConfiguration": {
+        "RequestIdKey": "X-Request-ID",
+        "DownstreamScheme": "http"
+      },
+      "Routes": []
+    }
