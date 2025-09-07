@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build services (placeholder)
+        run: |
+          echo "TODO: dotnet build ./services/*/*.csproj --configuration Release"
+      - name: Node setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build frontend (placeholder)
+        run: |
+          echo "TODO: npm ci && npm run build --prefix frontend"
+      - name: SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          artifact-name: sbom-spdx.json
