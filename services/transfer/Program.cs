@@ -130,6 +130,7 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<IdempotencyMiddleware>();
 
 app.UseHttpsRedirection();
+app.UseSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 

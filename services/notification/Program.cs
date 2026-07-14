@@ -133,6 +133,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("WebPushPolicy");
 app.UseHttpsRedirection();
+app.UseSecurityHeaders();
 app.UseAuthentication();
 app.UseAuthorization();
 

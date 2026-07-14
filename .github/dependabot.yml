@@ -1,0 +1,25 @@
+version: 2
+# SCA coverage (docs/context/07): keep dependencies patched; Dependabot opens PRs for
+# vulnerable/outdated deps across the .NET services, the Angular app, GitHub Actions and Docker.
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: npm
+    directory: "/frontend/web"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
