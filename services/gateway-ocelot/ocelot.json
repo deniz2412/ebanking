@@ -1,7 +1,254 @@
 {
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/accounts/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "account-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/accounts/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "read:accounts" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 30
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-User-Email": "Claims[email]",
+        "X-Request-ID": "{RequestId}"
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30,
+        "Region": "accounts"
+      },
+      "LoadBalancerOptions": {
+        "Type": "RoundRobin"
+      }
+
+    },
+    {
+      "DownstreamPathTemplate": "/api/transfers/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "transfer-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/transfers/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "write:transfers" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 20
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/standing-orders/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "transfer-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/standing-orders/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "write:transfers" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 15
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/payments/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "payment-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/payments/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "write:payments" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 15
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/payment-templates/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "payment-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/payment-templates/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "write:payments" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 25
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/notifications/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "notification-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/notifications/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "read:notifications" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 50
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/audit/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "audit-service.ebanking-backend.svc.cluster.local",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/audit/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "read:audit" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 25
+      },
+      "RouteClaimsRequirement": {
+        "sub": ""
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/healthz",
+      "UpstreamHttpMethod": [ "GET" ],
+      "DownstreamPathTemplate": "/healthz",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 8080
+        }
+      ]
+    },
+    {
+      "UpstreamPathTemplate": "/api/auth/logout",
+      "UpstreamHttpMethod": [ "POST" ],
+      "DownstreamPathTemplate": "/api/auth/logout",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "127.0.0.1",
+          "Port": 80
+        }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      }
+    }
+  ],
   "GlobalConfiguration": {
     "RequestIdKey": "X-Request-ID",
     "DownstreamScheme": "http"
-  },
-  "Routes": []
+  }
 }

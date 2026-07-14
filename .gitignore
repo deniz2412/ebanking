@@ -9,3 +9,12 @@ obj/
 *.crt
 *.key
 .idea
+.angular
+
+# Local secrets / env (use .env.example as the template)
+.env
+*.env
+!.env.example
+
+# Service logs
+services/**/logs/

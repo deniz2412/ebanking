@@ -1,0 +1,12 @@
+=== A7 — VULNERABLE (Vuln:A7=true) ===
+# captured 2026-07-14T07:08:54Z
+[*] Forged JWT signed with attacker key, sub='dev-user-id' (no Keycloak login)
+    GET /api/accounts/me/balance -> 200 {"balance":5000.00,"currency":"EUR","userId":"dev-user-id","timestamp":"2026-07-14T07:08:54.8979154Z"}
+
+[!] VULNERABLE: forged token accepted; impersonated dev-user-id.
+
+=== A7 — HARDENED (Vuln:A7=false) ===
+[*] Forged JWT signed with attacker key, sub='dev-user-id' (no Keycloak login)
+    GET /api/accounts/me/balance -> 401 
+
+[+] HARDENED: forged token rejected.

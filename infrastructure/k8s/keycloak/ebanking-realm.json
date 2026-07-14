@@ -1,67 +1,433 @@
 {
+  "id": "ebanking",
   "realm": "ebanking",
+  "displayName": "EBanking Realm",
   "enabled": true,
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "loginTheme": "base",
+  "accountTheme": "base",
+  "adminTheme": "base",
+  "emailTheme": "base",
+  "sslRequired": "external",
+  "accessTokenLifespan": 1800,
+  "refreshTokenMaxReuse": 0,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "oauth2DeviceCodeLifespan": 600,
+  "oauth2DevicePollingInterval": 5,
+  "offlineSessionMaxLifespanEnabled": false,
+  "offlineSessionMaxLifespan": 5184000,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "clientOfflineSessionIdleTimeout": 0,
+  "clientOfflineSessionMaxLifespan": 0,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeoutRememberMe": 0,
+  "ssoSessionMaxLifespanRememberMe": 0,
   "otpPolicyType": "totp",
-  "requiredActions": [
-    {
-      "alias": "CONFIGURE_TOTP",
-      "name": "Configure OTP",
-      "enabled": true,
-      "defaultAction": true
-    }
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "bruteForceProtected": false,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "defaultRoles": [
+    "offline_access",
+    "uma_authorization"
   ],
+  "requiredCredentials": [
+    "password"
+  ],
+  "otpSupportedApplications": [
+    "FreeOTP",
+    "Google Authenticator"
+  ],
+  "requiredActions": [],
+  "browserFlow": "browser",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients",
+  "dockerAuthenticationFlow": "docker auth",
   "roles": {
     "realm": [
       {
-        "name": "read:accounts"
+        "id": "read-accounts-role-id",
+        "name": "read:accounts",
+        "description": "Read access to account information",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "ebanking"
       },
       {
-        "name": "write:transfers"
+        "id": "write-transfers-role-id",
+        "name": "write:transfers",
+        "description": "Create and manage transfers",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "ebanking"
       },
       {
-        "name": "write:payments"
+        "id": "write-payments-role-id",
+        "name": "write:payments",
+        "description": "Create and manage payments",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "ebanking"
       },
       {
-        "name": "read:notifications"
+        "id": "read-notifications-role-id",
+        "name": "read:notifications",
+        "description": "Read notifications",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "ebanking"
+      },
+      {
+        "id": "read-audit-role-id",
+        "name": "read:audit",
+        "description": "Read audit logs",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "ebanking"
       }
-    ]
+    ],
+    "client": {}
   },
+  "groups": [],
+  "users": [
+    {
+      "id": "test-user-id",
+      "username": "testuser",
+      "enabled": true,
+      "totp": false,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "test@ebank.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "read:accounts",
+        "write:transfers",
+        "write:payments",
+        "read:notifications"
+      ],
+      "clientRoles": {},
+      "groups": []
+    }
+  ],
   "clients": [
     {
-      "clientId": "angular-spa",
-      "protocol": "openid-connect",
-      "publicClient": true,
-      "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
-      "implicitFlowEnabled": false,
-      "serviceAccountsEnabled": false,
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      },
+      "id": "ebanking-frontend-id",
+      "clientId": "ebanking-frontend",
+      "name": "EBanking Frontend",
+      "description": "Frontend SPA client",
+      "rootUrl": "https://ebank.local",
+      "adminUrl": "",
+      "baseUrl": "/",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "",
+      "registrationAccessToken": "",
+      "defaultRoles": [],
       "redirectUris": [
-        "https://ebank.local/app/*"
+        "https://ebank.local/*",
+        "https://ebank.local/dashboard*",
+        "https://ebank.local/callback*",
+        "http://localhost:4200/*"
       ],
       "webOrigins": [
-        "https://ebank.local"
+        "https://ebank.local",
+        "http://localhost:4200"
       ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://ebank.local/*"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": false,
+      "nodeReRegistrationTimeout": -1,
       "defaultClientScopes": [
         "web-origins",
         "roles",
         "profile",
         "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt",
+        "read:accounts",
+        "write:transfers",
+        "write:payments",
+        "read:notifications"
       ]
     },
     {
+      "id": "api-gateway-id",
       "clientId": "api-gateway",
-      "protocol": "openid-connect",
-      "publicClient": false,
-      "serviceAccountsEnabled": false,
+      "name": "API Gateway",
+      "description": "Backend API Gateway service account",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "your-api-gateway-client-secret",
+      "registrationAccessToken": "",
+      "defaultRoles": [],
+      "redirectUris": [],
+      "webOrigins": [],
+      "notBefore": 0,
+      "bearerOnly": true,
+      "consentRequired": false,
       "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "bearerOnly": true
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {},
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
     }
-  ]
+  ],
+  "clientScopes": [
+    {
+      "id": "read-accounts-scope-id",
+      "name": "read:accounts",
+      "description": "Read access to account information",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "read-accounts-mapper-id",
+          "name": "read:accounts",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "account-service",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "write-transfers-scope-id",
+      "name": "write:transfers",
+      "description": "Create and manage transfers",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "write-transfers-mapper-id",
+          "name": "write:transfers",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "transfer-service",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "write-payments-scope-id",
+      "name": "write:payments",
+      "description": "Create and manage payments",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "write-payments-mapper-id",
+          "name": "write:payments",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "payment-service",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "read-notifications-scope-id",
+      "name": "read:notifications",
+      "description": "Read notifications",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "read-notifications-mapper-id",
+          "name": "read:notifications",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "notification-service",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "read-audit-scope-id",
+      "name": "read:audit",
+      "description": "Read audit logs",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "read-audit-mapper-id",
+          "name": "read:audit",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "audit-service",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "role_list",
+    "profile",
+    "email",
+    "web-origins"
+  ],
+  "defaultOptionalClientScopes": [
+    "offline_access",
+    "address",
+    "phone",
+    "microprofile-jwt"
+  ],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "smtpServer": {},
+  "eventsEnabled": false,
+  "eventsListeners": [
+    "jboss-logging"
+  ],
+  "enabledEventTypes": [],
+  "adminEventsEnabled": false,
+  "adminEventsDetailsEnabled": false,
+  "identityProviders": [],
+  "identityProviderMappers": [],
+  "components": {
+    "org.keycloak.services.clientregistration.policy.ClientRegistrationPolicy": [
+      {
+        "id": "trusted-hosts-id",
+        "name": "Trusted Hosts",
+        "providerId": "trusted-hosts",
+        "subType": "anonymous",
+        "subComponents": {},
+        "config": {
+          "host-sending-registration-request-must-match": [
+            "true"
+          ],
+          "client-uris-must-match": [
+            "true"
+          ]
+        }
+      },
+      {
+        "id": "consent-required-id",
+        "name": "Consent Required",
+        "providerId": "consent-required",
+        "subType": "anonymous",
+        "subComponents": {},
+        "config": {}
+      }
+    ]
+  },
+  "internationalizationEnabled": false,
+  "supportedLocales": [],
+  "defaultLocale": "",
+  "authenticationFlows": [],
+  "authenticatorConfig": []
 }

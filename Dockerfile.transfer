@@ -1,0 +1,30 @@
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 8080
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy shared project first
+COPY services/shared/ ./shared/
+
+# Copy transfer service project file and restore dependencies
+COPY services/transfer/TransferService.csproj ./transfer/
+RUN dotnet restore ./transfer/TransferService.csproj
+
+# Copy transfer service source code
+COPY services/transfer/ ./transfer/
+WORKDIR /src/transfer
+RUN dotnet build TransferService.csproj -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish TransferService.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Create logs directory
+RUN mkdir -p logs
+
+ENTRYPOINT ["dotnet", "TransferService.dll"]

@@ -1,0 +1,17 @@
+=== A5 — VULNERABLE (Vuln:A5=true) ===
+# captured 2026-07-14T07:08:53Z
+[!] VULNERABLE: /status leaked host/stack details with no authentication:
+    service         : api-gateway
+    os              : Microsoft Windows 10.0.19045
+    architecture    : X64
+    framework       : .NET 8.0.20
+    clrVersion      : 8.0.20
+    machineName     : AEGIS
+    user            : Deniz
+    processId       : 26400
+    environment     : Development
+    assemblyVersion : 1.0.0.0
+    serverTimeUtc   : 2026-07-14T07:08:54.2657162Z
+
+=== A5 — HARDENED (Vuln:A5=false) ===
+[+] HARDENED: /status -> 404 (endpoint not exposed)

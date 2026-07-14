@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-data
+  namespace: data
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow backend services to access data layer
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ebanking-backend
+      ports:
+        - protocol: TCP
+          port: 1433  # MSSQL
+        - protocol: TCP
+          port: 9092  # Kafka
+        - protocol: TCP
+          port: 8081  # Schema Registry
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-svc
+  namespace: svc
+spec:
+  podSelector:
+    matchLabels:
+      app: redpanda
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow backend services to access Kafka in svc namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ebanking-backend
+      ports:
+        - protocol: TCP
+          port: 9092
+        - protocol: TCP
+          port: 8081

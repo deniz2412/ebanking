@@ -1,97 +1,109 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.IdentityModel.Tokens;
+using Shared.Extensions;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
+using Ocelot.Provider.Kubernetes;
 using Serilog;
-using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuration
+// Prefer an environment-specific Ocelot route file (e.g. ocelot.Development.json points
+// at localhost dev ports; the default ocelot.json targets k8s cluster DNS).
+var ocelotFile = File.Exists(
+    Path.Combine(builder.Environment.ContentRootPath, $"ocelot.{builder.Environment.EnvironmentName}.json"))
+        ? $"ocelot.{builder.Environment.EnvironmentName}.json"
+        : "ocelot.json";
+
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-    .AddJsonFile("ocelot.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile(ocelotFile, optional: false, reloadOnChange: true)
     .AddEnvironmentVariables();
 
 // Logging
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
-builder.Host.UseSerilog();
+builder.AddSharedSerilog("gateway-ocelot");
 
 // CORS
-var spaOrigin = builder.Configuration.GetValue<string>("Cors:SpaOrigin") ?? "https://ebank.local";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "https://ebank.local", "http://localhost:4200" };
+
 builder.Services.AddCors(opts =>
 {
-    opts.AddPolicy("spa", p => p.WithOrigins(spaOrigin).AllowAnyHeader().AllowAnyMethod());
+    opts.AddPolicy("ebanking", policy =>
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials()
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10)));
 });
 
-// Auth
-var authority = builder.Configuration.GetValue<string>("Auth:Authority") ?? "https://ebank.local/auth/realms/ebanking";
-var audience = builder.Configuration.GetValue<string>("Auth:Audience");
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
-    {
-        o.Authority = authority;
-        o.RequireHttpsMetadata = true;
-        o.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateAudience = !string.IsNullOrWhiteSpace(audience),
-            ValidAudience = audience
-        };
-    });
+// Authentication
+builder.Services.AddSharedAuthentication(builder.Configuration, builder.Environment, "api-gateway");
 
-builder.Services.AddAuthorization();
-
-// Rate limiting
-builder.Services.AddRateLimiter(options =>
+// Authorization
+builder.Services.AddAuthorization(options =>
 {
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    options.AddPolicy("ip", httpContext =>
-    {
-        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 60,                  
-            Window = TimeSpan.FromMinutes(1),  
-            QueueLimit = 0,                    
-            AutoReplenishment = true
-        });
-    });
+    options.AddPolicy("read:accounts", policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "read:accounts"));
+    options.AddPolicy("write:transfers", policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "write:transfers"));
+    options.AddPolicy("write:payments", policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "write:payments"));
+    options.AddPolicy("read:notifications", policy => policy.RequireAuthenticatedUser().RequireClaim("scope", "read:notifications"));
 });
 
-// Ocelot
-builder.Services.AddOcelot(builder.Configuration);
+// Rate Limiting
+builder.Services.AddSharedRateLimiting();
+
+// Request size limits
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB limit
+});
+
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB limit
+    options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(30);
+    options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+});
+
+// Ocelot. The Kubernetes service-discovery provider is only used in-cluster; locally the
+// routes use explicit localhost DownstreamHostAndPorts, so skip it in Development.
+var ocelotBuilder = builder.Services.AddOcelot(builder.Configuration);
+if (!builder.Environment.IsDevelopment())
+{
+    ocelotBuilder.AddKubernetes();
+}
+
+builder.Services.AddHttpClient();
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// Security headers
-app.Use((ctx, next) =>
-{
-    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    ctx.Response.Headers["X-Frame-Options"] = "DENY";
-    ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
-    ctx.Response.Headers["Content-Security-Policy"] =
-        "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline'";
-    return next();
-});
+// Middleware pipeline
+app.UseRequestResponseLogging();
+app.UseSecurityHeaders();
 
 app.UseSerilogRequestLogging();
-app.UseHsts();
-app.UseHttpsRedirection();
 
-app.UseCors("spa");
+// TLS/HSTS is terminated at the ingress in production; locally the gateway serves plain
+// HTTP so the SPA can call it without cert friction.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("ebanking");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+app.MapControllers();
+
+app.MapGet("/healthz", () => Results.Ok(new {
+    status = "healthy",
+    timestamp = DateTime.UtcNow,
+    version = "1.0.0"
+}));
 
 await app.UseOcelot();
 

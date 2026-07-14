@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>eBanking - Secure Online Banking</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Security Headers -->
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#667eea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="eBanking">
+
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Secure online banking platform with multi-factor authentication, real-time notifications, and advanced security features.">
+  <meta name="keywords" content="banking, online banking, secure banking, financial services, money transfer">
+  <meta name="author" content="eBanking">
+  <meta name="robots" content="noindex, nofollow"> <!-- Prevent indexing of banking application -->
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/favicon.ico">
+
+  <!-- Preconnect to external domains for performance -->
+  <link rel="preconnect" href="https://api.ebanking.com">
+
+  <!-- Web App Manifest - disabled for development -->
+  <!-- <link rel="manifest" href="/manifest.json"> -->
+
+</head>
+<body>
+  <!-- Application Root -->
+  <app-root>
+    <!-- Loading Screen -->
+    <div id="initial-loader" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    ">
+      <div style="
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 48px;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+      ">
+        <div style="font-size: 4rem; margin-bottom: 24px;">🏦</div>
+        <h1 style="
+          margin: 0 0 12px 0;
+          color: #2c3e50;
+          font-size: 2rem;
+          font-weight: 700;
+        ">eBanking</h1>
+        <p style="
+          color: #6c757d;
+          margin-bottom: 32px;
+          font-size: 1.125rem;
+        ">Secure Online Banking</p>
+
+        <!-- Loading Spinner -->
+        <div style="
+          width: 40px;
+          height: 40px;
+          border: 4px solid #e9ecef;
+          border-top: 4px solid #667eea;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 16px auto;
+        "></div>
+
+        <p style="
+          color: #495057;
+          margin: 0;
+          font-size: 0.875rem;
+        ">Loading secure environment...</p>
+
+        <!-- Security Notice -->
+        <div style="
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          text-align: left;
+          background-color: #f8f9fa;
+          padding: 16px;
+          border-radius: 8px;
+          border-left: 4px solid #28a745;
+          margin-top: 24px;
+          font-size: 0.875rem;
+        ">
+          <div style="font-size: 1.25rem; flex-shrink: 0;">🛡️</div>
+          <div>
+            <strong style="color: #2c3e50; display: block; margin-bottom: 4px;">
+              Protected by advanced security
+            </strong>
+            <ul style="margin: 0; padding-left: 16px; color: #495057;">
+              <li>256-bit SSL encryption</li>
+              <li>Multi-factor authentication</li>
+              <li>Real-time fraud monitoring</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </app-root>
+
+  <!-- Service Worker Registration -->
+  <script>
+    // Remove loading screen once app loads
+    document.addEventListener('DOMContentLoaded', function() {
+      setTimeout(function() {
+        const loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.transition = 'opacity 0.5s ease';
+          setTimeout(() => loader.remove(), 500);
+        }
+      }, 1000);
+    });
+
+    // Register Service Worker - disabled for development
+    if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js')
+          .then(function(registration) {
+            console.log('SW registered: ', registration);
+          })
+          .catch(function(registrationError) {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    } else {
+      console.log('Service Worker disabled for development (HTTP) or not supported');
+    }
+
+    // CSS Animation for loading spinner
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+
+  <!-- Noscript fallback -->
+  <noscript>
+    <div style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #dc3545;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      z-index: 10000;
+    ">
+      <div>
+        <h1>JavaScript Required</h1>
+        <p>This banking application requires JavaScript to function securely.</p>
+        <p>Please enable JavaScript and refresh the page.</p>
+      </div>
+    </div>
+  </noscript>
+</body>
+</html>

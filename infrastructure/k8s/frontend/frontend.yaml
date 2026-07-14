@@ -15,7 +15,7 @@ metadata:
   name: frontend
   namespace: svc
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels: { app: frontend }
   template:
@@ -24,8 +24,13 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: nginxdemos/hello:plain-text
+          image: nginx:alpine
           ports: [ { containerPort: 80 } ]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+            - name: app
+              mountPath: /usr/share/nginx/html
           readinessProbe:
             httpGet: { path: "/", port: 80 }
             initialDelaySeconds: 3
@@ -34,26 +39,17 @@ spec:
             httpGet: { path: "/", port: 80 }
             initialDelaySeconds: 5
             periodSeconds: 10
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: frontend-ingress
-  namespace: svc
-  annotations:
-    cert-manager.io/issuer: ebank-ca
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts: [ "ebank.local" ]
-      secretName: ebank-tls
-  rules:
-    - host: ebank.local
-      http:
-        paths:
-          - path: /app
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port: { number: 80 }
+          resources:
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+      volumes:
+        - name: config
+          configMap:
+            name: frontend-nginx-config
+        - name: app
+          configMap:
+            name: frontend-app

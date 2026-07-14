@@ -1,0 +1,142 @@
+services:
+  # MSSQL Database
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ebanking-mssql
+    environment:
+      SA_PASSWORD: ${MSSQL_SA_PASSWORD:-EBanking123!}
+      ACCEPT_EULA: Y
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    networks:
+      - ebanking-network
+    restart: unless-stopped
+
+  # RedPanda (Kafka)
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: ebanking-kafka
+    command:
+      - redpanda
+      - start
+      - --smp
+      - '1'
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - '0'
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+      - "9644:9644"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - ebanking-network
+    restart: unless-stopped
+
+  # RedPanda Console (Kafka UI)
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    container_name: ebanking-kafka-console
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports:
+      - "8080:8080"
+    networks:
+      - ebanking-network
+    depends_on:
+      - redpanda
+    restart: unless-stopped
+
+  # Keycloak
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: ebanking-keycloak
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
+      KC_DB: mssql
+      KC_DB_URL: jdbc:sqlserver://mssql:1433;databaseName=keycloak;encrypt=false;trustServerCertificate=true
+      KC_DB_USERNAME: sa
+      KC_DB_PASSWORD: ${MSSQL_SA_PASSWORD:-EBanking123!}
+      # SQL Server XA/distributed transactions aren't enabled in the container image;
+      # use non-XA transactions so Keycloak can enlist a plain JDBC connection.
+      KC_TRANSACTION_XA_ENABLED: "false"
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8180
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: true
+    ports:
+      - "8180:8080"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - ebanking-network
+    depends_on:
+      - mssql
+    restart: unless-stopped
+    command: start-dev
+
+  # Example Account Service (commented out - uncomment and modify as needed)
+  # account-service:
+  #   build:
+  #     context: ./services/account
+  #     dockerfile: Dockerfile
+  #   container_name: ebanking-account-service
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: Development
+  #     ASPNETCORE_URLS: http://+:80
+  #     ConnectionStrings__DefaultConnection: Server=mssql,1433;Database=EBanking;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;
+  #     Kafka__BootstrapServers: redpanda:29092
+  #     Keycloak__Authority: http://keycloak:8080/realms/ebanking
+  #     Keycloak__Audience: account-service
+  #   ports:
+  #     - "5001:80"
+  #   networks:
+  #     - ebanking-network
+  #   depends_on:
+  #     - mssql
+  #     - redpanda
+  #     - keycloak
+  #   restart: unless-stopped
+
+  # Example Gateway Service (commented out - uncomment and modify as needed)
+  # gateway-service:
+  #   build:
+  #     context: ./services/gateway-ocelot
+  #     dockerfile: Dockerfile
+  #   container_name: ebanking-gateway
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: Development
+  #     ASPNETCORE_URLS: http://+:80
+  #     Keycloak__Authority: http://keycloak:8080/realms/ebanking
+  #   ports:
+  #     - "5000:80"
+  #   networks:
+  #     - ebanking-network
+  #   depends_on:
+  #     - keycloak
+  #     - account-service
+  #   restart: unless-stopped
+
+networks:
+  ebanking-network:
+    driver: bridge
+
+volumes:
+  mssql_data:
+    driver: local
+  redpanda_data:
+    driver: local
+  keycloak_data:
+    driver: local

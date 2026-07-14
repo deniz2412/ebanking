@@ -1,0 +1,27 @@
+=== A2 Path traversal — VULNERABLE (Vuln:A2=true), secrets redacted ===
+# captured 2026-07-14T07:13:35.040247Z
+[LEAK] ../appsettings.Development.json -> 200
+        {
+          "Logging": {
+            "LogLevel": {
+              "Default": "Debug",
+[LEAK] ../../../.env -> 200
+        # Database Configuration
+        MSSQL_SA_PASSWORD=***REDACTED***
+        
+        # Keycloak Configuration  
+[LEAK] ../../../rootCA.key -> 200
+        -----BEGIN RSA PRIVATE KEY-----
+        [PRIVATE KEY BODY REDACTED]
+        [REDACTED base64]
+        [REDACTED base64]
+        [REDACTED base64]
+
+[!] VULNERABLE: path traversal read 3 file(s) outside the statements dir.
+
+=== A2 Path traversal â€” HARDENED (Vuln:A2=false) ===
+[safe] ../appsettings.Development.json -> 404
+[safe] ../../../.env -> 404
+[safe] ../../../rootCA.key -> 404
+
+[+] HARDENED: traversal blocked.

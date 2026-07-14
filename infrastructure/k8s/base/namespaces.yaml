@@ -21,3 +21,9 @@ kind: Namespace
 metadata:
   name: security
   labels: { zone: security }
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ebanking-backend
+  labels: { zone: svc, app: backend }

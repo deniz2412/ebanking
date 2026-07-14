@@ -19,6 +19,8 @@ kubectl apply -f infrastructure/k8s/ingress/keycloak-ingress.yaml
 echo "Applying NetworkPolicies ..."
 kubectl apply -f infrastructure/k8s/network/allow-ingress-to-gateway.yaml
 kubectl apply -f infrastructure/k8s/network/allow-ingress-to-keycloak.yaml
+kubectl apply -f infrastructure/k8s/network/allow-dns-egress.yaml
+kubectl apply -f infrastructure/k8s/network/allow-backend-communication.yaml
 
 echo "Waiting for rollouts ..."
 kubectl -n security rollout status deploy/keycloak

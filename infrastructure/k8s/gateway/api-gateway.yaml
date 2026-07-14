@@ -9,7 +9,7 @@ spec:
   ports:
     - name: http
       port: 80
-      targetPort: 80
+      targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -26,20 +26,12 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: ghcr.io/deniz2412/gateway-ocelot:latest
-          imagePullPolicy: IfNotPresent
-          ports: [ { containerPort: 80 } ]
+          image: ebanking/api-gateway:latest
+          imagePullPolicy: Never
+          ports: [ { containerPort: 8080 } ]
           env:
             - name: ASPNETCORE_URLS
-              value: "http://0.0.0.0:80"
-          readinessProbe:
-            httpGet: { path: /healthz, port: 80 }
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          livenessProbe:
-            httpGet: { path: /healthz, port: 80 }
-            initialDelaySeconds: 10
-            periodSeconds: 10
+              value: "http://0.0.0.0:8080"
           volumeMounts:
             - name: cfg
               mountPath: /app/appsettings.json

@@ -5,6 +5,7 @@ metadata:
   namespace: svc
   annotations:
     cert-manager.io/issuer: ebank-ca
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   tls:
@@ -14,9 +15,15 @@ spec:
     - host: ebank.local
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
             backend:
               service:
                 name: api-gateway
+                port: { number: 80 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
                 port: { number: 80 }

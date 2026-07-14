@@ -1,0 +1,19 @@
+=== A1 SQLi — VULNERABLE (Vuln:A1=true) ===
+# captured 2026-07-14T07:02:05Z
+[*] Baseline: search for a reference that does not exist
+    -> 200  rows=0
+
+[*] Injection: reference = "' OR '1'='1' -- "
+    -> 200  rows=134
+    dumped transactions across 3 distinct accounts: [1, 2, 3]
+
+[!] VULNERABLE: SQL injection returned 134 rows (cross-tenant dump).
+
+=== A1 SQLi — HARDENED (Vuln:A1=false) ===
+[*] Baseline: search for a reference that does not exist
+    -> 200  rows=0
+
+[*] Injection: reference = "' OR '1'='1' -- "
+    -> 200  rows=0
+
+[+] HARDENED: payload treated as a literal � no injection.

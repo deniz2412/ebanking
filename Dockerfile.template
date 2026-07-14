@@ -1,0 +1,42 @@
+# Sample Dockerfile for EBanking .NET Services
+# Copy this to your service directory and modify as needed
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy shared projects first
+COPY ["services/shared/shared.csproj", "services/shared/"]
+COPY ["services/shared/Database/Database.csproj", "services/shared/Database/"]
+
+# Copy service project file
+COPY ["services/account/AccountService.csproj", "services/account/"]
+
+# Restore dependencies
+RUN dotnet restore "services/account/AccountService.csproj"
+
+# Copy all source files
+COPY . .
+
+# Build the application
+WORKDIR "/src/services/account"
+RUN dotnet build "AccountService.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "AccountService.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost/health || exit 1
+
+ENTRYPOINT ["dotnet", "AccountService.dll"]

@@ -1,0 +1,86 @@
+# Vault CSI Driver Installation
+# This should be installed via Helm in the deployment script
+---
+# ServiceAccount for Vault CSI Driver
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-csi-provider
+  namespace: security
+---
+# ClusterRole for Vault CSI Driver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-csi-provider-clusterrole
+rules:
+- apiGroups: [""]
+  resources: ["serviceaccounts/token"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["serviceaccounts"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get"]
+---
+# ClusterRoleBinding for Vault CSI Driver
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-csi-provider-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vault-csi-provider-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: vault-csi-provider
+  namespace: security
+---
+# Vault Authentication Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: security
+data:
+  vault-config.hcl: |
+    storage "inmem" {}
+    
+    listener "tcp" {
+      address = "0.0.0.0:8200"
+      tls_disable = true
+    }
+    
+    ui = true
+    
+    # Enable Kubernetes auth method
+    auth "kubernetes" {
+      kubernetes_host = "https://kubernetes.default.svc.cluster.local"
+    }
+---
+# Service Account for microservices to authenticate with Vault
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ebanking-vault-auth
+  namespace: ebanking-backend
+  annotations:
+    vault.hashicorp.com/auth-path: "auth/kubernetes"
+    vault.hashicorp.com/auth-type: "kubernetes"
+    vault.hashicorp.com/auth-config-role: "ebanking-role"
+---
+# Service Account for microservices in svc namespace (gateway)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ebanking-vault-auth
+  namespace: svc
+  annotations:
+    vault.hashicorp.com/auth-path: "auth/kubernetes"
+    vault.hashicorp.com/auth-type: "kubernetes"
+    vault.hashicorp.com/auth-config-role: "ebanking-role"
