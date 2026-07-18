@@ -41,6 +41,18 @@ export class AuthService {
     // Dynamic import will be handled in init()
   }
 
+  /** Load runtime config from /config.json, falling back to local-dev defaults. */
+  private async loadRuntimeConfig(): Promise<{ keycloakUrl: string; realm: string; clientId: string }> {
+    const defaults = { keycloakUrl: 'http://localhost:8180', realm: 'ebanking', clientId: 'ebanking-frontend' };
+    try {
+      const res = await fetch('/config.json', { cache: 'no-store' });
+      if (!res.ok) return defaults;
+      return { ...defaults, ...(await res.json()) };
+    } catch {
+      return defaults;
+    }
+  }
+
   /**
    * Initialize Keycloak with PKCE flow
    */
@@ -50,11 +62,13 @@ export class AuthService {
       const KeycloakModule = await import('keycloak-js');
       const KeycloakConstructor = KeycloakModule.default || KeycloakModule;
 
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      // Runtime config (public/config.json) lets the same build run against local dev
+      // (localhost:8180) or the compose/k8s stack (keycloak:8180) without a rebuild.
+      const cfg = await this.loadRuntimeConfig();
       this.keycloak = new KeycloakConstructor({
-        url: isLocal ? 'http://localhost:8180' : 'https://ebank.local/auth',
-        realm: 'ebanking',
-        clientId: 'ebanking-frontend'
+        url: cfg.keycloakUrl,
+        realm: cfg.realm,
+        clientId: cfg.clientId
       });
 
       // No onLoad/silent-SSO iframe: the realm sets X-Frame-Options SAMEORIGIN, which

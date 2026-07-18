@@ -23,14 +23,21 @@ spec:
       labels: { app: frontend }
     spec:
       containers:
-        - name: nginx
-          image: nginx:alpine
+        - name: frontend
+          image: ebanking/frontend:latest
+          imagePullPolicy: IfNotPresent
           ports: [ { containerPort: 80 } ]
-          volumeMounts:
-            - name: config
-              mountPath: /etc/nginx/conf.d
-            - name: app
-              mountPath: /usr/share/nginx/html
+          env:
+            # In-cluster gateway service; the browser-facing Keycloak URL comes from the
+            # Keycloak ingress host (see infrastructure/k8s/ingress/keycloak-ingress.yaml).
+            - name: GATEWAY_URL
+              value: "http://api-gateway:80"
+            - name: KEYCLOAK_URL
+              value: "https://keycloak.ebank.local"
+            - name: KEYCLOAK_REALM
+              value: "ebanking"
+            - name: KEYCLOAK_CLIENT_ID
+              value: "ebanking-frontend"
           readinessProbe:
             httpGet: { path: "/", port: 80 }
             initialDelaySeconds: 3
@@ -40,16 +47,5 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
-            limits:
-              memory: "128Mi"
-              cpu: "100m"
-            requests:
-              memory: "64Mi"
-              cpu: "50m"
-      volumes:
-        - name: config
-          configMap:
-            name: frontend-nginx-config
-        - name: app
-          configMap:
-            name: frontend-app
+            limits: { memory: "128Mi", cpu: "100m" }
+            requests: { memory: "64Mi", cpu: "50m" }

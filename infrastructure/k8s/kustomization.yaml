@@ -1,0 +1,49 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Core application stack. Optional add-ons that need their own operators/CRDs are NOT
+# included here (apply them separately if your cluster has the prerequisites):
+#   - vault/            (HashiCorp Vault + Secrets Store CSI driver)
+#   - cert-manager/     (cert-manager installed)
+# The ingress objects assume an ingress controller (e.g. ingress-nginx) is present.
+
+resources:
+  # namespaces first (the three zones + security/dmz)
+  - base/namespaces.yaml
+
+  # data layer
+  - mssql/unified-mssql-secret.yaml
+  - mssql/mssql.yaml
+  - kafka/redpanda.yaml
+
+  # identity
+  - keycloak/keycloak-realm.yaml
+  - keycloak/keycloak.yaml
+
+  # services
+  - services/account-service.yaml
+  - services/transfer-service.yaml
+  - services/payment-service.yaml
+  - services/notification-secret.yaml
+  - services/notification-service.yaml
+  - services/audit-service.yaml
+
+  # gateway + frontend
+  - gateway/gateway-ocelot-configmap.yaml
+  - gateway/api-gateway.yaml
+  - frontend/frontend.yaml
+
+  # network policies (enforced only on a CNI that supports NetworkPolicy).
+  # allow-backend-communication.yaml is the consolidated backend policy set;
+  # allow-backend-to-data.yaml is an older duplicate and is intentionally omitted.
+  - network/default-deny.yaml
+  - network/allow-dns-egress.yaml
+  - network/allow-dmz-to-gateway.yaml
+  - network/allow-ingress-to-gateway.yaml
+  - network/allow-ingress-to-keycloak.yaml
+  - network/allow-probes-gateway.yaml
+  - network/allow-backend-communication.yaml
+
+  # ingress (needs an ingress controller to route)
+  - ingress/ebank-ingress.yaml
+  - ingress/keycloak-ingress.yaml

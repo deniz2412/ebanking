@@ -3,77 +3,109 @@
 Companion codebase for the bachelor thesis **"Sigurnost i zaštita veb aplikacija"**
 (Security and Protection of Web Applications) by Deniz Hadžirušidović, VŠRI eMPIRICOM.
 
-This repository turns **Chapter 4** of the thesis (the e-banking case study) into a
-working, security-focused reference implementation. The goal, per the thesis, is a
-**two-pass** demonstration:
+It turns **Chapter 4** of the thesis (the e-banking case study) into a working,
+security-focused reference implementation, built as a **two-pass** experiment:
 
-1. **Vulnerable pass** — a realistic e-banking prototype with intentionally planted
-   vulnerabilities, attacked with **Burp Suite** and **OWASP ZAP**.
-2. **Hardened pass** — the same application with the vulnerabilities patched, plus a
-   before/after evaluation of the security controls.
+1. **Vulnerable pass** (`vuln/m3-attacks` branch) — a realistic e-banking app with seven
+   intentionally planted vulnerabilities (A1–A7), attacked with reproducible scripts.
+2. **Hardened pass** (`main`) — the same app with the vulnerabilities patched, plus a
+   before/after evaluation.
 
-It ties three frameworks together across the SDLC — **STRIDE** (design), **OWASP**
-(implementation & testing), and **MITRE ATT&CK** (operations) — the central thesis of
-the work.
+Three frameworks are tied together across the SDLC — **STRIDE** (design), **OWASP/ASVS**
+(build & test), **MITRE ATT&CK** (operations) — which is the central thesis of the work.
+
+> ⚠️ **This project deliberately demonstrates real attacks.** The vulnerable pass is
+> lab-only, on synthetic data — never expose it publicly. See
+> [`docs/context/08-attack-demo-plan.md`](docs/context/08-attack-demo-plan.md).
 
 ---
 
-## Where to start
+## Quick start
 
-All the extracted architecture and design context lives in [`docs/context/`](docs/context/).
-Read [`docs/context/00-index.md`](docs/context/00-index.md) first — it is the map of
-everything else.
+**Prerequisites:** Docker (Compose v2). For browser login, add the Keycloak hostname to your
+hosts file once so the browser and containers resolve the same token issuer:
 
-If you are an AI coding agent, read [`CLAUDE.md`](CLAUDE.md) before touching code.
+```
+127.0.0.1 keycloak      # /etc/hosts  (Windows: C:\Windows\System32\drivers\etc\hosts)
+```
+
+### Run with Docker Compose
+
+```bash
+./deploy.sh up                 # infra + all 6 services   (deploy.ps1 on Windows)
+./deploy.sh up --frontend      # + the Angular SPA on http://localhost:4200
+./deploy.sh logs gateway       # tail a service
+./deploy.sh down               # stop        ./deploy.sh clean   # stop + wipe data
+```
+
+| Surface | URL |
+|---|---|
+| Ocelot gateway | http://localhost:5000 |
+| SPA (with `--frontend`) | http://localhost:4200 · login `testuser` / `password123` |
+| Keycloak | http://localhost:8180 (`admin` / `admin123`) |
+| Kafka console | http://localhost:8080 |
+
+Try the golden path (view balance → transfer → notification):
+
+```bash
+TOKEN=$(curl -s -d client_id=ebanking-frontend -d grant_type=password \
+  -d username=testuser -d password=password123 \
+  -d 'scope=openid read:accounts write:transfers read:notifications' \
+  http://localhost:8180/realms/ebanking/protocol/openid-connect/token | jq -r .access_token)
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/accounts/me/balance
+```
+
+### Deploy to Kubernetes
+
+```bash
+./deploy.sh k8s-up             # build images, load into kind/minikube, apply manifests
+./deploy.sh k8s-down
+```
+
+Applies [`infrastructure/k8s`](infrastructure/k8s) (namespaces = the three zones, MSSQL,
+Redpanda, Keycloak, the services, gateway, frontend, NetworkPolicies, Ingress). Needs an
+ingress controller; Vault and cert-manager are optional add-ons (apply `infrastructure/k8s/vault`
+and `infrastructure/k8s/cert-manager` separately if your cluster has their operators).
+
+### Local development (without containers)
+
+Run infra in Compose and the services with `dotnet run` — see
+[`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Repository layout
 
 ```
-ebanking/                         # this repo — the single source-of-truth implementation
-├── README.md                     # this file
-├── CLAUDE.md                     # working context for AI coding agents
-├── docs/
-│   ├── context/                  # extracted architecture & design docs (start here)
-│   ├── c4/                       # C4 diagrams
-│   ├── threat-model/             # threat-model notes
-│   └── quickstart-phase0-1.md    # operational quick-start (Phase 0/1)
-├── .claude/
-│   ├── agents/                   # project subagents (security review, service scaffolding)
-│   └── skills/                   # project skills (STRIDE threat modeling)
-├── services/                     # ASP.NET 8 microservices + Ocelot gateway
-│   ├── account/  transfer/  payment/  notification/  audit/
-│   ├── gateway-ocelot/           # Ocelot API gateway
-│   └── shared/
-├── frontend/web/                 # Angular SPA
-├── infrastructure/               # Kubernetes manifests + Helm (the three zones)
-├── threat-models/                # STRIDE models per component (DFD + matrices)
-└── attacks/                      # attack scripts, ZAP/Burp configs, PoCs
+services/            ASP.NET 8 microservices (account, transfer, payment, notification,
+                     audit) + Ocelot gateway + shared library
+frontend/web/        Angular SPA (Dockerfile serves it via nginx, proxies /api → gateway)
+infrastructure/k8s/  Kubernetes manifests (kustomization.yaml) for the three zones
+docs/context/        extracted architecture & design docs — start at 00-index.md
+docs/M4-hardening.md, docs/M5-evaluation.md   hardening status + before/after evaluation
+threat-models/       STRIDE models (DFD + matrices → Definition-of-Done checks)
+attacks/             A1–A7 exploits, evidence, and RESULTS.md (the before/after record)
+deploy.sh / deploy.ps1   single deployment entry point (compose + k8s)
+docker-compose.yml   full local stack
 ```
 
-> Earlier single/two-service prototypes (`AccountService`, `ebanking-backend`,
-> `ebanking-project`) were superseded by this monorepo and moved to `../_archive/` for
-> reference; they are not part of the build.
+## Status — roadmap M1–M5 complete
 
-## Tech stack (summary)
+| Milestone | State |
+|---|---|
+| M1 Golden path | ✅ login (Keycloak OIDC) → balance → transfer → Kafka event → notification + immutable audit, through the Ocelot gateway |
+| M2 STRIDE model | ✅ [`threat-models/transfer-flow.stride.md`](threat-models/transfer-flow.stride.md) |
+| M3 Vulnerable pass | ✅ A1–A7 on `vuln/m3-attacks`, exploits + evidence in [`attacks/`](attacks/) |
+| M4 Hardened pass | ✅ patched on `main`, CI security gates, [`docs/M4-hardening.md`](docs/M4-hardening.md) |
+| M5 Evaluation | ✅ [`docs/M5-evaluation.md`](docs/M5-evaluation.md) |
 
-Angular SPA · NGINX Ingress + WAF (ModSecurity CRS) · Ocelot API Gateway (.NET) ·
-Keycloak (OAuth2/OIDC) · ASP.NET 8 + EF Core microservices · Apache Kafka ·
-MS SQL Server 2022 · HashiCorp Vault · Kubernetes · GitHub Actions CI/CD.
+This is a **reference prototype**: the two-pass demonstration is complete (5/7 vulnerabilities
+fully closed, 2 reduced to low residual), and the remaining path to full ASVS L3 (HttpOnly-cookie
+token custody, mTLS, Vault, MFA) is tracked in the threat-model DoD and `docs/M4-hardening.md`.
 
-See [`docs/context/04-tech-stack.md`](docs/context/04-tech-stack.md) for the full list
-and versions.
+## Tech stack
 
-## Status
+Angular SPA · NGINX Ingress + WAF · Ocelot gateway (.NET) · Keycloak (OAuth2/OIDC) ·
+ASP.NET 8 + EF Core services · Apache Kafka (Redpanda locally) · MS SQL Server 2022 ·
+HashiCorp Vault · Kubernetes · GitHub Actions. Full list:
+[`docs/context/04-tech-stack.md`](docs/context/04-tech-stack.md).
 
-Golden-path build in progress (roadmap M0–M1, see `docs/context/09-roadmap.md`). The
-Ocelot gateway and the Account/Transfer/Payment/Notification/Audit services are scaffolded
-on ASP.NET 8 + EF Core, the Angular SPA shell exists under `frontend/web`, and the
-Kubernetes/Helm infrastructure for the three zones (Keycloak, MSSQL, Kafka/Redpanda, Vault,
-cert-manager, NetworkPolicies, Ingress) is in `infrastructure/`. See `PROGRESS.md` for the
-per-story breakdown. The STRIDE threat models (`threat-models/`) and the A1–A7 attack
-demos (`attacks/`) are not yet populated.
-
-> ⚠️ **This project deliberately contains and demonstrates vulnerabilities.** The
-> vulnerable pass must only ever run in an isolated lab environment. Never expose it to
-> a public network or use real personal/financial data. See
-> [`docs/context/08-attack-demo-plan.md`](docs/context/08-attack-demo-plan.md).
+If you are an AI coding agent, read [`CLAUDE.md`](CLAUDE.md) first.

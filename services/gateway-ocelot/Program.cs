@@ -7,12 +7,18 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Prefer an environment-specific Ocelot route file (e.g. ocelot.Development.json points
-// at localhost dev ports; the default ocelot.json targets k8s cluster DNS).
-var ocelotFile = File.Exists(
-    Path.Combine(builder.Environment.ContentRootPath, $"ocelot.{builder.Environment.EnvironmentName}.json"))
-        ? $"ocelot.{builder.Environment.EnvironmentName}.json"
-        : "ocelot.json";
+// Choose the Ocelot route file. OCELOT_CONFIG wins (compose sets ocelot.Docker.json with
+// container hostnames); otherwise an environment-specific file (ocelot.Development.json →
+// localhost dev ports); otherwise the default ocelot.json (k8s cluster DNS).
+var ocelotFile = Environment.GetEnvironmentVariable("OCELOT_CONFIG");
+if (string.IsNullOrWhiteSpace(ocelotFile) ||
+    !File.Exists(Path.Combine(builder.Environment.ContentRootPath, ocelotFile)))
+{
+    ocelotFile = File.Exists(
+        Path.Combine(builder.Environment.ContentRootPath, $"ocelot.{builder.Environment.EnvironmentName}.json"))
+            ? $"ocelot.{builder.Environment.EnvironmentName}.json"
+            : "ocelot.json";
+}
 
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)

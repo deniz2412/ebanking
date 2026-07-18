@@ -1,66 +1,67 @@
+# Full-stack local run of eBanking Secure: infra + all services + (optional) SPA.
+#
+#   docker compose up -d --build            # infra + backend services
+#   docker compose --profile frontend up -d --build   # + the Angular SPA on :4200
+#
+# One host prerequisite for browser login: map the Keycloak hostname to localhost so the
+# browser and the containers resolve the SAME issuer URL (http://keycloak:8180):
+#   echo "127.0.0.1 keycloak" | sudo tee -a /etc/hosts      (Windows: C:\Windows\System32\drivers\etc\hosts)
+
+x-dotnet-service: &dotnet-service
+  restart: unless-stopped
+  networks: [ebanking-network]
+  environment: &dotnet-env
+    ASPNETCORE_ENVIRONMENT: Development
+    ASPNETCORE_URLS: http://+:8080
+    Auth__DevBypass: "false"
+    Auth__Authority: http://keycloak:8180/realms/ebanking
+    Auth__RequireHttpsMetadata: "false"
+  depends_on:
+    mssql:
+      condition: service_healthy
+    redpanda:
+      condition: service_started
+    keycloak:
+      condition: service_started
+
 services:
-  # MSSQL Database
+  # ── Data layer ────────────────────────────────────────────────────────────
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: ebanking-mssql
     environment:
       SA_PASSWORD: ${MSSQL_SA_PASSWORD:-EBanking123!}
-      ACCEPT_EULA: Y
+      ACCEPT_EULA: "Y"
       MSSQL_PID: Developer
-    ports:
-      - "1433:1433"
-    volumes:
-      - mssql_data:/var/opt/mssql
-    networks:
-      - ebanking-network
+    ports: ["1433:1433"]
+    volumes: [mssql_data:/var/opt/mssql]
+    networks: [ebanking-network]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
-  # RedPanda (Kafka)
-  redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
-    container_name: ebanking-kafka
-    command:
-      - redpanda
-      - start
-      - --smp
-      - '1'
-      - --reserve-memory
-      - 0M
-      - --overprovisioned
-      - --node-id
-      - '0'
-      - --kafka-addr
-      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr
-      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-      - "9644:9644"
-    volumes:
-      - redpanda_data:/var/lib/redpanda/data
-    networks:
-      - ebanking-network
-    restart: unless-stopped
-
-  # RedPanda Console (Kafka UI)
-  redpanda-console:
-    image: docker.redpanda.com/redpandadata/console:v2.7.2
-    container_name: ebanking-kafka-console
-    environment:
-      KAFKA_BROKERS: redpanda:29092
-    ports:
-      - "8080:8080"
-    networks:
-      - ebanking-network
+  # One-shot: create the database Keycloak needs (services create their own via EF EnsureCreated).
+  db-init:
+    image: mcr.microsoft.com/mssql-tools:latest
+    container_name: ebanking-db-init
     depends_on:
-      - redpanda
-    restart: unless-stopped
+      mssql:
+        condition: service_healthy
+    networks: [ebanking-network]
+    environment:
+      SA_PASSWORD: ${MSSQL_SA_PASSWORD:-EBanking123!}
+    entrypoint: ["/bin/bash", "-c", "/opt/mssql-tools/bin/sqlcmd -S mssql -U sa -P \"$$SA_PASSWORD\" -Q \"IF DB_ID('keycloak') IS NULL CREATE DATABASE keycloak;\""]
+    restart: "no"
 
-  # Keycloak
+  # ── Identity ──────────────────────────────────────────────────────────────
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: ebanking-keycloak
+    command: ["start-dev", "--import-realm"]
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin123}
@@ -68,66 +69,141 @@ services:
       KC_DB_URL: jdbc:sqlserver://mssql:1433;databaseName=keycloak;encrypt=false;trustServerCertificate=true
       KC_DB_USERNAME: sa
       KC_DB_PASSWORD: ${MSSQL_SA_PASSWORD:-EBanking123!}
-      # SQL Server XA/distributed transactions aren't enabled in the container image;
-      # use non-XA transactions so Keycloak can enlist a plain JDBC connection.
-      KC_TRANSACTION_XA_ENABLED: "false"
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_PORT: 8180
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
-      KC_HTTP_ENABLED: true
-    ports:
-      - "8180:8080"
+      KC_TRANSACTION_XA_ENABLED: "false"   # SQL Server XA isn't enabled in the container image
+      # Canonical hostname resolvable by BOTH the containers (docker DNS) and the browser
+      # (the /etc/hosts entry) so the token issuer is identical on both sides.
+      KC_HOSTNAME: keycloak
+      KC_HTTP_PORT: "8180"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+    ports: ["8180:8180"]
     volumes:
       - keycloak_data:/opt/keycloak/data
-    networks:
-      - ebanking-network
+      - ./infrastructure/k8s/keycloak/ebanking-realm.json:/opt/keycloak/data/import/ebanking-realm.json:ro
+    networks: [ebanking-network]
     depends_on:
-      - mssql
+      db-init:
+        condition: service_completed_successfully
     restart: unless-stopped
-    command: start-dev
 
-  # Example Account Service (commented out - uncomment and modify as needed)
-  # account-service:
-  #   build:
-  #     context: ./services/account
-  #     dockerfile: Dockerfile
-  #   container_name: ebanking-account-service
-  #   environment:
-  #     ASPNETCORE_ENVIRONMENT: Development
-  #     ASPNETCORE_URLS: http://+:80
-  #     ConnectionStrings__DefaultConnection: Server=mssql,1433;Database=EBanking;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;
-  #     Kafka__BootstrapServers: redpanda:29092
-  #     Keycloak__Authority: http://keycloak:8080/realms/ebanking
-  #     Keycloak__Audience: account-service
-  #   ports:
-  #     - "5001:80"
-  #   networks:
-  #     - ebanking-network
-  #   depends_on:
-  #     - mssql
-  #     - redpanda
-  #     - keycloak
-  #   restart: unless-stopped
+  # ── Event bus ─────────────────────────────────────────────────────────────
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.7
+    container_name: ebanking-kafka
+    command:
+      - redpanda
+      - start
+      - --smp
+      - "1"
+      - --reserve-memory
+      - 0M
+      - --overprovisioned
+      - --node-id
+      - "0"
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    ports: ["9092:9092", "29092:29092", "9644:9644"]
+    volumes: [redpanda_data:/var/lib/redpanda/data]
+    networks: [ebanking-network]
+    restart: unless-stopped
 
-  # Example Gateway Service (commented out - uncomment and modify as needed)
-  # gateway-service:
-  #   build:
-  #     context: ./services/gateway-ocelot
-  #     dockerfile: Dockerfile
-  #   container_name: ebanking-gateway
-  #   environment:
-  #     ASPNETCORE_ENVIRONMENT: Development
-  #     ASPNETCORE_URLS: http://+:80
-  #     Keycloak__Authority: http://keycloak:8080/realms/ebanking
-  #   ports:
-  #     - "5000:80"
-  #   networks:
-  #     - ebanking-network
-  #   depends_on:
-  #     - keycloak
-  #     - account-service
-  #   restart: unless-stopped
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    container_name: ebanking-kafka-console
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports: ["8080:8080"]
+    networks: [ebanking-network]
+    depends_on: [redpanda]
+    restart: unless-stopped
+
+  # ── Services ──────────────────────────────────────────────────────────────
+  account:
+    <<: *dotnet-service
+    container_name: ebanking-account
+    build: { context: ., dockerfile: Dockerfile.account }
+    ports: ["5001:8080"]
+    environment:
+      <<: *dotnet-env
+      Auth__Audience: account-service
+      ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=AccountService_Dev;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;"
+
+  transfer:
+    <<: *dotnet-service
+    container_name: ebanking-transfer
+    build: { context: ., dockerfile: Dockerfile.transfer }
+    ports: ["5002:8080"]
+    environment:
+      <<: *dotnet-env
+      Auth__Audience: transfer-service
+      ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=EBanking_Transfer_Dev;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;"
+      ConnectionStrings__Kafka: "redpanda:29092"
+
+  payment:
+    <<: *dotnet-service
+    container_name: ebanking-payment
+    build: { context: ., dockerfile: Dockerfile.payment }
+    ports: ["5005:8080"]
+    environment:
+      <<: *dotnet-env
+      Auth__Audience: payment-service
+      ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=EBanking_Payment_Dev;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;"
+      ConnectionStrings__Kafka: "redpanda:29092"
+
+  notification:
+    <<: *dotnet-service
+    container_name: ebanking-notification
+    build: { context: ., dockerfile: Dockerfile.notification }
+    ports: ["5003:8080"]
+    environment:
+      <<: *dotnet-env
+      Auth__Audience: notification-service
+      ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=EBanking_Notification_Dev;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;"
+      ConnectionStrings__Kafka: "redpanda:29092"
+
+  audit:
+    <<: *dotnet-service
+    container_name: ebanking-audit
+    build: { context: ., dockerfile: Dockerfile.audit }
+    ports: ["5004:8080"]
+    environment:
+      <<: *dotnet-env
+      Auth__Audience: audit-service
+      ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=EBanking_Audit_Dev;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;"
+      ConnectionStrings__Kafka: "redpanda:29092"
+
+  gateway:
+    <<: *dotnet-service
+    container_name: ebanking-gateway
+    build: { context: ., dockerfile: Dockerfile.gateway }
+    ports: ["5000:8080"]
+    environment:
+      <<: *dotnet-env
+      OCELOT_CONFIG: ocelot.Docker.json
+      Cors__AllowedOrigins__0: http://localhost:4200
+    depends_on:
+      account: { condition: service_started }
+      transfer: { condition: service_started }
+      notification: { condition: service_started }
+      audit: { condition: service_started }
+      keycloak: { condition: service_started }
+
+  # ── Frontend (optional: --profile frontend) ───────────────────────────────
+  frontend:
+    profiles: [frontend]
+    container_name: ebanking-frontend
+    build: { context: ./frontend/web, dockerfile: Dockerfile }
+    environment:
+      KEYCLOAK_URL: http://keycloak:8180
+      KEYCLOAK_REALM: ebanking
+      KEYCLOAK_CLIENT_ID: ebanking-frontend
+    ports: ["4200:80"]
+    networks: [ebanking-network]
+    depends_on: [gateway]
+    restart: unless-stopped
 
 networks:
   ebanking-network:
@@ -135,8 +211,5 @@ networks:
 
 volumes:
   mssql_data:
-    driver: local
   redpanda_data:
-    driver: local
   keycloak_data:
-    driver: local
