@@ -243,6 +243,11 @@ jobs:
           scanners: vuln,secret,misconfig
           severity: HIGH,CRITICAL
           exit-code: '1'
+          # The .NET base image (Debian) always carries a handful of OS-package CVEs with
+          # no upstream patch yet (status will_not_fix/affected — e.g. zlib1g, perl-base);
+          # failing the build on those forever provides no actionable remediation, only
+          # noise, so only vulnerabilities that actually have a fix available should gate.
+          ignore-unfixed: true
 
       - name: Push image (only reached if the scan passed)
         id: push

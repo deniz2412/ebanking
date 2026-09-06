@@ -5,6 +5,11 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
+# MSBuild walks up from a project's directory looking for Directory.Build.props; without
+# this copy, the NuGet vulnerability pins it carries (see repo root) silently never apply
+# inside the image, even though local `dotnet restore` from the repo root picks them up.
+COPY Directory.Build.props ./
+
 # Copy shared project first
 COPY services/shared/ ./shared/
 

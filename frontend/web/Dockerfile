@@ -8,6 +8,9 @@ RUN npm run build
 
 FROM nginx:alpine AS final
 # nginx:alpine renders templates (envsubst) and runs /docker-entrypoint.d/*.sh on startup.
+# Pull in patched Alpine packages at build time rather than trusting the upstream tag's
+# last rebuild date — caught stale libuuid/util-linux CVEs that already had fixes released.
+RUN apk update && apk upgrade --no-cache
 ENV GATEWAY_URL=http://gateway:8080
 COPY default.conf.template /etc/nginx/templates/default.conf.template
 COPY docker-entrypoint.sh /docker-entrypoint.d/40-ebanking-config.sh
