@@ -24,7 +24,8 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Create logs directory
-RUN mkdir -p logs
+# Create logs directory, owned by the non-root user we switch to below
+RUN mkdir -p logs && chown -R $APP_UID logs
 
+USER $APP_UID
 ENTRYPOINT ["dotnet", "PaymentService.dll"]

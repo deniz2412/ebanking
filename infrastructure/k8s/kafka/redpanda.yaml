@@ -18,6 +18,9 @@ spec:
     metadata:
       labels: { app: redpanda }
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
       containers:
         - name: redpanda
           image: docker.redpanda.com/redpandadata/redpanda:v24.2.7

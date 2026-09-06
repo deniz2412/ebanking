@@ -17,6 +17,9 @@ spec:
         app: audit-service
         tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: audit-service
         image: ebanking/audit-service:dev

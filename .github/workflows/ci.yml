@@ -117,6 +117,7 @@ jobs:
           scan-ref: infrastructure
           severity: HIGH,CRITICAL
           exit-code: '1'
+          trivyignores: .trivyignore.yaml
 
   # ── Build + test (only after the gates pass) ───────────────────────────────
   build-test:
@@ -158,6 +159,7 @@ jobs:
           scanners: vuln,secret,misconfig
           severity: HIGH,CRITICAL
           exit-code: '1'
+          trivyignores: .trivyignore.yaml
 
   # ── SBOM (attach as artifact; would follow the image in the deploy stage) ──
   sbom:

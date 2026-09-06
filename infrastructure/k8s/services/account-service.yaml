@@ -18,6 +18,9 @@ spec:
         tier: backend
     spec:
       serviceAccountName: account-service
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: account-service
         image: ebanking/account-service:dev

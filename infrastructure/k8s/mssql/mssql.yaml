@@ -31,6 +31,10 @@ spec:
   template:
     metadata: { labels: { app: mssql } }
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 0
       containers:
         - name: mssql
           image: mcr.microsoft.com/mssql/server:2022-latest

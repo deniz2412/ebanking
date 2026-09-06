@@ -19,6 +19,9 @@ spec:
     metadata:
       labels: { app: keycloak }
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
         - name: keycloak
           image: quay.io/keycloak/keycloak:25.0

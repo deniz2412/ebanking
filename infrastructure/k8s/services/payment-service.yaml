@@ -17,6 +17,9 @@ spec:
         app: payment-service
         tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: payment-service
         image: ebanking/payment-service:dev

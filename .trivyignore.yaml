@@ -1,0 +1,28 @@
+# Documented, deliberate exceptions to Trivy's Kubernetes misconfig checks.
+# Each entry mirrors an ignore-check.kube-linter.io annotation already present in the
+# manifest itself (see that file for the full rationale) — kube-linter's annotations
+# aren't understood by Trivy's separate ruleset, so the same exceptions are repeated here.
+#
+# Trivy reports paths relative to whichever scan-ref found them, and this same file is
+# used from two CI jobs with different scan-refs (iac-scan: infrastructure, fs-scan: .),
+# so both the "k8s/..." and "infrastructure/k8s/..." forms are listed for each entry.
+misconfigurations:
+  - id: AVD-KSV-0014 # readOnlyRootFilesystem
+    paths:
+      - "k8s/mssql/mssql.yaml"
+      - "k8s/kafka/redpanda.yaml"
+      - "k8s/keycloak/keycloak.yaml"
+      - "k8s/frontend/frontend.yaml"
+      - "infrastructure/k8s/mssql/mssql.yaml"
+      - "infrastructure/k8s/kafka/redpanda.yaml"
+      - "infrastructure/k8s/keycloak/keycloak.yaml"
+      - "infrastructure/k8s/frontend/frontend.yaml"
+  - id: AVD-KSV-0118 # default (root-permitting) pod security context
+    paths:
+      - "k8s/frontend/frontend.yaml"
+      - "infrastructure/k8s/frontend/frontend.yaml"
+  - id: AVD-DS-0002 # Dockerfile missing non-root USER
+    paths:
+      # nginx:alpine must run as root to bind port 80; see the matching kube-linter
+      # exception on infrastructure/k8s/frontend/frontend.yaml for the full rationale.
+      - "frontend/web/Dockerfile"

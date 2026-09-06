@@ -17,6 +17,9 @@ spec:
         app: notification-service
         tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: notification-service
         image: ebanking/notification-service:dev

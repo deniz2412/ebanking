@@ -17,6 +17,9 @@ spec:
         app: transfer-service
         tier: backend
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
       - name: transfer-service
         image: ebanking/transfer-service:dev

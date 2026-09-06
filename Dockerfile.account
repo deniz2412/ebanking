@@ -24,11 +24,12 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Create logs directory
-RUN mkdir -p logs
+# Create logs directory, owned by the non-root user we switch to below
+RUN mkdir -p logs && chown -R $APP_UID logs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
+USER $APP_UID
 ENTRYPOINT ["dotnet", "AccountService.dll"]

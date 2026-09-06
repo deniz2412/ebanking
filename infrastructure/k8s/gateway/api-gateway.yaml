@@ -24,6 +24,9 @@ spec:
     metadata:
       labels: { app: api-gateway }
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
         - name: gateway
           image: ebanking/api-gateway:dev
