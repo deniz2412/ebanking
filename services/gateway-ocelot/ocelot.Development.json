@@ -137,6 +137,40 @@
       }
     },
     {
+      "DownstreamPathTemplate": "/api/payment-templates/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5005
+        }
+      ],
+      "UpstreamPathTemplate": "/api/payment-templates/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE"
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [
+          "write:payments"
+        ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 25
+      },
+      "AddHeadersToRequest": {
+        "X-User-Id": "Claims[sub]",
+        "X-Request-ID": "{RequestId}"
+      }
+    },
+    {
       "DownstreamPathTemplate": "/api/invoice/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [

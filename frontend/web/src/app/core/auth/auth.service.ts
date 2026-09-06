@@ -86,7 +86,13 @@ export class AuthService {
       ]);
 
       if (authenticated) {
-        await this.loadUserProfile();
+        // Guard this too: an unguarded hang here (e.g. a slow/unreachable profile
+        // endpoint) would leave init() — and the app's loading spinner — stuck forever,
+        // even though login itself already succeeded.
+        await Promise.race([
+          this.loadUserProfile(),
+          new Promise<void>((resolve) => setTimeout(resolve, 5000))
+        ]);
         this.setupTokenRefresh();
       }
 

@@ -1,8 +1,17 @@
 // E-Banking Service Worker
 // Handles push notifications, caching, and offline functionality
 
-const CACHE_NAME = 'ebanking-v1';
+// Bump this on every deploy that changes app code — a new value forces the browser to
+// install a fresh service worker and drop the old cache (see 'activate' below). Without
+// this, "cache-first" would serve a stale app shell forever, invisible to server-side fixes.
+const CACHE_NAME = 'ebanking-v2';
 const OFFLINE_URL = '/offline.html';
+// Paths that must always be fetched fresh (app shell + code) — cached only as an
+// offline fallback, never served ahead of a live network response.
+const NETWORK_FIRST_PATHS = ['/', '/index.html', '/config.json'];
+const isAppShellOrCode = (url) =>
+  NETWORK_FIRST_PATHS.includes(url.pathname) ||
+  /\.(?:js|css)$/.test(url.pathname);
 
 // URLs to cache for offline functionality
 const urlsToCache = [
@@ -56,46 +65,56 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event.
+// App shell + JS/CSS: network-first, falling back to cache only when offline — so a
+// server-side change is visible on the very next load, not hidden behind a stale cache.
+// Everything else: cache-first (unchanged), for genuinely static assets (icons, fonts).
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
   }
-
-  // Skip Chrome extensions
   if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+
+  const url = new URL(event.request.url);
+
+  if (isAppShellOrCode(url)) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const toCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, toCache));
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(event.request).then((cached) => {
+            if (cached) return cached;
+            if (event.request.mode === 'navigate') return caches.match(OFFLINE_URL);
+          })
+        )
+    );
     return;
   }
 
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // Return cached version if available
         if (response) {
           return response;
         }
-
-        // Try network request
         return fetch(event.request)
           .then((response) => {
-            // Don't cache non-200 responses
             if (!response || response.status !== 200 || response.type !== 'basic') {
               return response;
             }
-
-            // Clone response for caching
             const responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
             return response;
           })
           .catch(() => {
-            // Network failed, serve offline page for navigation requests
             if (event.request.mode === 'navigate') {
               return caches.match(OFFLINE_URL);
             }

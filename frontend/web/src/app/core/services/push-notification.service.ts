@@ -69,6 +69,15 @@ export class PushNotificationService {
       // Update permission status
       this.permissionSubject.next(Notification.permission);
 
+      // Force-check for a new sw.js on every load, and once a new one takes control,
+      // reload so the page picks up the fresh app shell immediately — otherwise a stale
+      // cache-first service worker can serve old code indefinitely (see sw.js network-first
+      // handling for the app shell/JS/CSS, which this pairs with).
+      this.swRegistration.update().catch(() => {});
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+
     } catch (error) {
       console.error('Service Worker registration failed:', error);
     }

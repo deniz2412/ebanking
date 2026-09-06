@@ -92,21 +92,22 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// Ensure database is created and migrations are applied
+// Ensure the database schema exists. Dev uses EnsureCreated (no migration history);
+// EF Core migrations are introduced in the hardening pass (M4).
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PaymentDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
+
     try
     {
-        logger.LogInformation("Applying database migrations...");
-        await context.Database.MigrateAsync();
-        logger.LogInformation("Database migrations completed successfully.");
+        logger.LogInformation("Ensuring database schema...");
+        await context.Database.EnsureCreatedAsync();
+        logger.LogInformation("Database schema ready.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "An error occurred while ensuring the database schema.");
         throw;
     }
 }
