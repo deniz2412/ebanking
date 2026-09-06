@@ -163,6 +163,10 @@ services:
       Auth__Audience: notification-service
       ConnectionStrings__DefaultConnection: "Server=mssql,1433;Database=EBanking_Notification_Dev;User Id=sa;Password=${MSSQL_SA_PASSWORD:-EBanking123!};TrustServerCertificate=true;"
       ConnectionStrings__Kafka: "redpanda:29092"
+      # Real values come from .env (gitignored) — see .env.example. Web Push registration
+      # will fail without these, but the rest of the golden path is unaffected.
+      VAPID__PublicKey: ${VAPID_PUBLIC_KEY:-}
+      VAPID__PrivateKey: ${VAPID_PRIVATE_KEY:-}
 
   audit:
     <<: *dotnet-service
