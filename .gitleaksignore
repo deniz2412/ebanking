@@ -1,0 +1,18 @@
+# Known findings in git HISTORY (not in the current tree — Gitleaks scans full history by
+# default, so these old commits will always be flagged otherwise). Each entry is resolved:
+#
+#   - notification-secret.yaml / appsettings.Development.json / mssql secret.yaml:
+#     a real VAPID private key was committed in 6cdb8ad. It has since been ROTATED (a new
+#     keypair replaces it in the current tree) and the committed manifests were changed to
+#     CHANGE_ME placeholders — real values are meant to be injected via Vault/kubectl, never
+#     committed. History is not rewritten (single-author repo, low-value target, and a
+#     rewrite would break the published remote); rotation neutralizes the exposure instead.
+#   - threat-models/transfer-flow.stride.md: false positive — the text literally discusses
+#     the config key `Auth:DevBypass` as part of the threat description, not a real secret
+#     value. Reworded in the current tree to avoid the pattern; kept here for the old commit.
+6cdb8ad3923d4dc7b1599fb92b346d0d186791a4:infrastructure/k8s/services/notification-secret.yaml:generic-api-key:10
+6cdb8ad3923d4dc7b1599fb92b346d0d186791a4:infrastructure/k8s/services/notification-secret.yaml:kubernetes-secret-yaml:2
+6cdb8ad3923d4dc7b1599fb92b346d0d186791a4:infrastructure/k8s/mssql/secret.yaml:generic-api-key:27
+6cdb8ad3923d4dc7b1599fb92b346d0d186791a4:services/notification/appsettings.Development.json:generic-api-key:24
+6cdb8ad3923d4dc7b1599fb92b346d0d186791a4:threat-models/transfer-flow.stride.md:generic-api-key:52
+6cdb8ad3923d4dc7b1599fb92b346d0d186791a4:threat-models/transfer-flow.stride.md:generic-api-key:71

@@ -20,12 +20,16 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx -n dmz   --set 
 
 
 ## Apply base & platform
+
+Prefer `./deploy.sh k8s-up` (or `./deploy.ps1 k8s-up`), which builds and loads the service
+images and applies the full kustomization (`infrastructure/k8s`) in one step. To apply
+manifests individually instead:
 ```bash
 kubectl apply -f infrastructure/k8s/base/namespaces.yaml
 kubectl apply -f infrastructure/k8s/network/default-deny.yaml
 kubectl apply -f infrastructure/k8s/network/allow-dmz-to-gateway.yaml
 kubectl apply -f infrastructure/k8s/keycloak/keycloak.yaml
-kubectl apply -f infrastructure/k8s/mssql/secret.yaml
+kubectl apply -f infrastructure/k8s/mssql/unified-mssql-secret.yaml   # edit CHANGE_ME first
 kubectl apply -f infrastructure/k8s/mssql/mssql.yaml
 kubectl apply -f infrastructure/k8s/kafka/redpanda.yaml
 kubectl apply -f infrastructure/k8s/ingress/ebank-ingress.yaml
