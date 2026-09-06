@@ -1,0 +1,25 @@
+<Project>
+  <!--
+    Pins known-vulnerable TRANSITIVE package versions to patched releases across every
+    project in the solution (MSBuild picks this up automatically for every SDK-style
+    .csproj under this directory). These are plain `Include`s, not `Update`s: none of
+    these packages is a direct dependency anywhere in the solution, so `Update` (which
+    only edits an existing PackageReference item) would silently do nothing. An `Include`
+    with a pinned version wins NuGet's "nearest wins" resolution over the older transitive
+    version, without the project needing to reference the package directly otherwise.
+    Found by the SCA CI gate (dotnet list package, vulnerable, include-transitive).
+  -->
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.13.2" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="7.6.3" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.6.3" />
+    <PackageReference Include="System.Formats.Asn1" Version="8.0.1" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.67.2" />
+  </ItemGroup>
+</Project>

@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   security-events: write   # for CodeQL / SARIF upload
+  actions: read            # CodeQL needs this to read workflow-run status
 
 env:
   REGISTRY: ghcr.io
@@ -86,11 +87,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/web/package-lock.json
-      - name: npm audit (fail on high)
+      - name: npm audit (fail on high, production deps only)
         working-directory: frontend/web
         run: |
           npm ci
-          npm audit --audit-level=high
+          # --omit=dev: devDependencies (Vite dev server, Karma, ...) never ship in the
+          # built app; only findings in the actual production bundle should gate the build.
+          npm audit --omit=dev --audit-level=high
 
   # ── Gate 4: IaC / Kubernetes manifest checks ───────────────────────────────
   iac-scan:
@@ -104,7 +107,7 @@ jobs:
         with:
           directory: infrastructure/k8s
       - name: Trivy config (misconfiguration)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: config
           scan-ref: infrastructure
@@ -144,7 +147,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Trivy fs (vulns + secrets, fail on HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: fs
           scan-ref: .
@@ -228,7 +231,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
 
       - name: Trivy image scan (fail on HIGH/CRITICAL — blocks the push below)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
           scanners: vuln,secret,misconfig
