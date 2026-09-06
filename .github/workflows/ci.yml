@@ -170,10 +170,100 @@ jobs:
           name: sbom
           path: sbom-spdx.json
 
-  # NOTE — deploy-stage gates from docs/context/07 are enforced in the CD pipeline /
-  # cluster and are tracked in docs/context/07 + threat-models DoD, not runnable in CI here:
-  #   - multi-stage distroless image build + Trivy IMAGE scan
-  #   - image signing (cosign/KMS) + SBOM attestation
+  # ── Gate 6: build, scan and sign container images (main only) ─────────────
+  # Runs after build-test passes. Each image is built and loaded locally first so Trivy
+  # can scan it BEFORE anything is pushed; only an image that passes the scan is pushed to
+  # GHCR and signed. Signing is keyless (cosign + GitHub OIDC) — no key material to manage.
+  build-push-images:
+    name: "Image: ${{ matrix.service }}"
+    runs-on: ubuntu-latest
+    needs: build-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write   # push to GHCR
+      id-token: write   # cosign keyless signing via GitHub OIDC
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: gateway
+            dockerfile: Dockerfile.gateway
+            context: .
+          - service: account
+            dockerfile: Dockerfile.account
+            context: .
+          - service: transfer
+            dockerfile: Dockerfile.transfer
+            context: .
+          - service: payment
+            dockerfile: Dockerfile.payment
+            context: .
+          - service: notification
+            dockerfile: Dockerfile.notification
+            context: .
+          - service: audit
+            dockerfile: Dockerfile.audit
+            context: .
+          - service: frontend
+            dockerfile: frontend/web/Dockerfile
+            context: frontend/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image (local only — nothing pushed yet)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
+
+      - name: Trivy image scan (fail on HIGH/CRITICAL — blocks the push below)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: Push image (only reached if the scan passed)
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:latest
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image (keyless, via GitHub OIDC identity)
+        run: |
+          cosign sign --yes \
+            "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}@${{ steps.push.outputs.digest }}"
+
+      - name: Attach SBOM to the signed image
+        uses: anchore/sbom-action@v0
+        with:
+          image: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}"
+          format: spdx-json
+          upload-artifact: false
+
+  # NOTE — the remaining deploy-stage gates from docs/context/07 need a real cluster and
+  # are tracked in docs/context/07 + threat-models DoD, not runnable in this CI:
   #   - OPA Gatekeeper admission (NetworkPolicy, TLS cert, CSP hash)
-  #   - branch protection: required review + signed commits
   #   - post-deploy anomaly check with automated rollback
+  # Branch protection (required review + signed commits) is a repo setting, not a workflow
+  # step — configured in GitHub: Settings -> Branches -> main.
