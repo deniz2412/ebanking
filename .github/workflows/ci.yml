@@ -78,7 +78,11 @@ jobs:
         run: dotnet restore ebanking.sln
       - name: .NET vulnerable packages (fail on any)
         run: |
-          dotnet list ebanking.sln package --vulnerable --include-transitive 2>&1 | tee vuln.txt
+          # `dotnet list package --vulnerable` exits 1 unconditionally (even when it finds
+          # nothing) — the real signal is in its text output, not its exit code. The
+          # trailing `|| true` stops that from tripping this shell's default -e/pipefail
+          # before the grep check below gets to run.
+          dotnet list ebanking.sln package --vulnerable --include-transitive 2>&1 | tee vuln.txt || true
           if grep -Eq '>= *(High|Critical)|Critical|High' vuln.txt; then
             echo "::error::Vulnerable NuGet packages found (High/Critical)"; exit 1
           fi
@@ -107,7 +111,7 @@ jobs:
         with:
           directory: infrastructure/k8s
       - name: Trivy config (misconfiguration)
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: config
           scan-ref: infrastructure
@@ -147,7 +151,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Trivy fs (vulns + secrets, fail on HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -231,7 +235,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
 
       - name: Trivy image scan (fail on HIGH/CRITICAL — blocks the push below)
-        uses: aquasecurity/trivy-action@v0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.sha }}
           scanners: vuln,secret,misconfig
