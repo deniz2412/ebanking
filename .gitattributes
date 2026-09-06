@@ -1,0 +1,6 @@
+# Force LF line endings for files that run as scripts inside Linux containers or via a
+# shebang — CRLF breaks the interpreter line (e.g. "#!/bin/sh\r" -> "not found") when
+# checked out on Windows with core.autocrlf enabled.
+*.sh text eol=lf
+Dockerfile* text eol=lf
+*.dockerfile text eol=lf
