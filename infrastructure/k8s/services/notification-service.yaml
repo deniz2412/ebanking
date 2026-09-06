@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: notification-service
-        image: ebanking/notification-service:latest
+        image: ebanking/notification-service:dev
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -73,6 +73,24 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: app-tmp
+          mountPath: /app/tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: app-tmp
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

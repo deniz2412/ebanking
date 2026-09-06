@@ -4,6 +4,13 @@ metadata:
   name: keycloak
   namespace: security
   labels: { app: keycloak }
+  annotations:
+    # start-dev writes its embedded H2 database and Quarkus runtime state under
+    # /opt/keycloak/data beyond the /tmp we've mounted; this deployment is dev-mode only
+    # (see docs/context — Keycloak is the identity provider, not custom-built here), so a
+    # production Keycloak deployment would move to an external DB + reassess this instead
+    # of guessing a read-only layout for start-dev's internal storage.
+    ignore-check.kube-linter.io/no-read-only-root-fs: "start-dev writes embedded DB/runtime state under /opt/keycloak/data"
 spec:
   replicas: 1
   selector:
@@ -20,12 +27,24 @@ spec:
             - { name: KEYCLOAK_ADMIN, value: "admin" }
             - { name: KEYCLOAK_ADMIN_PASSWORD, value: "admin" }
           ports: [ { containerPort: 8080 } ]
+          resources:
+            requests: { memory: "512Mi", cpu: "250m" }
+            limits: { memory: "1Gi", cpu: "1" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             - { name: realm, mountPath: /opt/keycloak/data/import }
+            - { name: tmp, mountPath: /tmp }
       volumes:
         - name: realm
           configMap:
             name: keycloak-realm
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

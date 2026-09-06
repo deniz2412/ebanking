@@ -36,14 +36,14 @@ switch ($Command) {
 
   "k8s-up" {
     Write-Host "Building service images..."
-    docker build -f Dockerfile.gateway -t ebanking/api-gateway:latest .
+    docker build -f Dockerfile.gateway -t ebanking/api-gateway:dev .
     foreach ($s in "account", "transfer", "payment", "notification", "audit") {
-      docker build -f "Dockerfile.$s" -t "ebanking/$s-service:latest" .
+      docker build -f "Dockerfile.$s" -t "ebanking/$s-service:dev" .
     }
-    docker build -f frontend/web/Dockerfile -t ebanking/frontend:latest frontend/web
+    docker build -f frontend/web/Dockerfile -t ebanking/frontend:dev frontend/web
     if (Get-Command kind -ErrorAction SilentlyContinue) {
       foreach ($img in "api-gateway", "account-service", "transfer-service", "payment-service", "notification-service", "audit-service", "frontend") {
-        kind load docker-image "ebanking/$img:latest" 2>$null
+        kind load docker-image "ebanking/$img:dev" 2>$null
       }
     }
     Write-Host "Applying manifests..."

@@ -20,7 +20,7 @@ spec:
       serviceAccountName: account-service
       containers:
       - name: account-service
-        image: ebanking/account-service:latest
+        image: ebanking/account-service:dev
         imagePullPolicy: Never
         ports:
         - containerPort: 8080

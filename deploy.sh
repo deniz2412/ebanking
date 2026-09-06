@@ -40,17 +40,17 @@ case "${1:-}" in
 
   k8s-up)
     echo "Building service images…"
-    docker build -f Dockerfile.gateway       -t ebanking/api-gateway:latest .
+    docker build -f Dockerfile.gateway       -t ebanking/api-gateway:dev .
     for s in account transfer payment notification audit; do
-      docker build -f "Dockerfile.$s" -t "ebanking/${s}-service:latest" .
+      docker build -f "Dockerfile.$s" -t "ebanking/${s}-service:dev" .
     done
-    docker build -f frontend/web/Dockerfile  -t ebanking/frontend:latest frontend/web
+    docker build -f frontend/web/Dockerfile  -t ebanking/frontend:dev frontend/web
     imgs=(api-gateway account-service transfer-service payment-service notification-service audit-service frontend)
     # kind / minikube run their own container runtime — load images in if present.
     if command -v kind >/dev/null && kind get clusters >/dev/null 2>&1; then
-      for img in "${imgs[@]}"; do kind load docker-image "ebanking/${img}:latest" 2>/dev/null || true; done
+      for img in "${imgs[@]}"; do kind load docker-image "ebanking/${img}:dev" 2>/dev/null || true; done
     elif command -v minikube >/dev/null; then
-      for img in "${imgs[@]}"; do minikube image load "ebanking/${img}:latest" 2>/dev/null || true; done
+      for img in "${imgs[@]}"; do minikube image load "ebanking/${img}:dev" 2>/dev/null || true; done
     fi
     echo "Applying manifests…"
     kubectl apply -k infrastructure/k8s

@@ -14,6 +14,13 @@ kind: Deployment
 metadata:
   name: frontend
   namespace: svc
+  annotations:
+    # nginx:alpine must start as root to bind port 80 and the entrypoint script writes
+    # config.json into the image at container startup, so runAsNonRoot and a read-only
+    # root filesystem aren't applicable here without switching to nginx-unprivileged +
+    # port 8080 (a bigger change deferred to avoid regressing the recently-fixed SPA).
+    ignore-check.kube-linter.io/run-as-non-root: "nginx:alpine binds port 80 as root by design"
+    ignore-check.kube-linter.io/no-read-only-root-fs: "entrypoint writes config.json into the image at startup"
 spec:
   replicas: 2
   selector:
@@ -22,11 +29,23 @@ spec:
     metadata:
       labels: { app: frontend }
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels: { app: frontend }
+                topologyKey: kubernetes.io/hostname
       containers:
         - name: frontend
-          image: ebanking/frontend:latest
+          image: ebanking/frontend:dev
           imagePullPolicy: IfNotPresent
           ports: [ { containerPort: 80 } ]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           env:
             # In-cluster gateway service; the browser-facing Keycloak URL comes from the
             # Keycloak ingress host (see infrastructure/k8s/ingress/keycloak-ingress.yaml).

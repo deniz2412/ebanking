@@ -17,6 +17,12 @@ kind: StatefulSet
 metadata:
   name: mssql
   namespace: data
+  annotations:
+    # The mssql-server image writes engine state under /var/opt/mssql/log, /var/opt/mssql/data
+    # and error-log/dump paths outside the mounted PVC; the exact write set isn't documented
+    # well enough to enumerate safely without a live-cluster validation pass, so this is a
+    # deliberate, documented exception rather than a guessed set of emptyDir mounts.
+    ignore-check.kube-linter.io/no-read-only-root-fs: "mssql-server writes runtime state to undocumented paths beyond /var/opt/mssql"
 spec:
   serviceName: mssql
   replicas: 1
@@ -45,10 +51,12 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /var/opt/mssql }
           securityContext:
-            runAsUser: 0
+            # The official mssql-server image ships a built-in non-root "mssql" user
+            # (uid 10001) since SQL Server 2019 — privileged/root was never required.
+            runAsUser: 10001
             runAsGroup: 0
-            allowPrivilegeEscalation: true
-            privileged: true
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
   volumeClaimTemplates:
     - metadata: { name: data }
       spec:

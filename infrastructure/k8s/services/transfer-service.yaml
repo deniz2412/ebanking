@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: transfer-service
-        image: ebanking/transfer-service:latest
+        image: ebanking/transfer-service:dev
         imagePullPolicy: Never
         ports:
         - containerPort: 8080
@@ -63,8 +63,23 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: app-tmp
+          mountPath: /app/tmp
       volumes:
       - name: tmp
+        emptyDir: {}
+      - name: app-tmp
         emptyDir: {}
 ---
 apiVersion: v1
